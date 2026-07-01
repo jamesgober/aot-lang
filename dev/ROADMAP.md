@@ -9,12 +9,13 @@
 Compiles, CI green, structure correct, no domain logic.
 - [x] Manifest, README, CHANGELOG, REPS, dual license, CI, deny, clippy, rustfmt.
 
-## v0.2.0 - Core (THE HARD PART, NOT DEFERRED)
-Ahead-of-time compilation of IR to a native object file or standalone binary.
-Dependencies (wires ir, codegen, linker) are wired here, when first used.
+## v0.2.0 - Core (THE HARD PART, NOT DEFERRED) (DONE)
+Ahead-of-time compilation of IR into a single linked image: lower each function to
+object code with codegen-lang, encode it, and lay the objects out with linker-lang.
+Dependencies (ir, codegen, linker) are wired here, where first used.
 Exit criteria:
-- [ ] Every public item has rustdoc + a runnable example.
-- [ ] Core invariants property-tested (full DIRECTIVES + API authored at this stage).
+- [x] Every public item has rustdoc + a runnable example.
+- [x] Core invariants property-tested (encode/decode round-trip over generated functions).
 
 ## v1.0.0 - API freeze
 Public surface stable and frozen until 2.0.

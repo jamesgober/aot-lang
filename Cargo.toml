@@ -3,7 +3,7 @@
 # =============================================================================
 [package]
 name    = "aot-lang"
-version = "0.1.0"
+version = "0.2.0"
 
 # Minimum Supported Rust Version (MSRV)
 rust-version = "1.85"
@@ -16,13 +16,13 @@ license = "Apache-2.0 OR MIT"
 readme = "README.md"
 
 # Description
-description = "Compile IR to a native object file or standalone binary."
+description = "Ahead-of-time compile the ir-lang IR into a single linked image."
 
 # Keywords (5 max)
-keywords = [compiler,aot,language,binary]
+keywords = ["compiler", "aot", "codegen", "linker", "language"]
 
 # Categories
-categories = [development-tools,compilers]
+categories = ["development-tools", "compilers"]
 
 # Links
 homepage      = "https://github.com/jamesgober/aot-lang"
@@ -45,14 +45,27 @@ path = "src/lib.rs"
 # #################################
 [features]
 default = ["std"]
-std = []
-# Serialization support.
-serde = ["dep:serde"]
+# Link the standard library. Without it the crate is `#![no_std]` and needs only
+# `alloc`; the flag forwards to every dependency so the whole pipeline drops std together.
+std = ["ir-lang/std", "codegen-lang/std", "linker-lang/std"]
+# Derive Serialize/Deserialize for the error type and forward to the dependencies,
+# so a linked image (and a failure) can be cached, logged, or moved between tools.
+serde = ["dep:serde", "ir-lang/serde", "codegen-lang/serde", "linker-lang/serde"]
 
 
 # DEPENDENCIES
 # #################################
 [dependencies]
+# The intermediate representation this crate consumes. `Function` is the unit of
+# compilation; its frozen 1.0 surface is the input to every `Compiler::add`.
+ir-lang = { version = "1", default-features = false }
+# Lowers each `Function` to a `Program` of register bytecode — the object code this
+# crate encodes and lays out. The first half of the pipeline.
+codegen-lang = { version = "1", default-features = false }
+# Places the encoded objects at addresses, resolves their entry symbols, and produces
+# the final `Image`. The second half of the pipeline; its `Image` is our output.
+linker-lang = { version = "1", default-features = false }
+# Optional serialization, gated behind the `serde` feature.
 serde = { version = "1", optional = true, default-features = false, features = ["derive", "alloc"] }
 
 
