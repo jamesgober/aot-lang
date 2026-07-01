@@ -14,7 +14,7 @@
 </div>
 <br>
 
-> **Status: pre-1.0 (`0.2.0`).** The public surface below is the one the crate ships today; it is being designed across the `0.x` series and frozen at `1.0`. Both error types are `#[non_exhaustive]`, so new failure reasons stay additive. See [`dev/ROADMAP.md`](../dev/ROADMAP.md).
+> **Status: stable (1.0).** The surface below is the `1.0` contract: it follows [Semantic Versioning](#semver) and will not change in a breaking way before `2.0`. Both error types are `#[non_exhaustive]`, so new failure reasons stay additive. See [`dev/ROADMAP.md`](../dev/ROADMAP.md).
 
 Ahead-of-time compile the [`ir-lang`](https://docs.rs/ir-lang) intermediate representation into a single linked [`Image`](#image): lower each function to object code with [`codegen-lang`](https://docs.rs/codegen-lang), encode it, and lay the objects out with [`linker-lang`](https://docs.rs/linker-lang).
 
@@ -41,7 +41,7 @@ Ahead-of-time compile the [`ir-lang`](https://docs.rs/ir-lang) intermediate repr
 
 ```toml
 [dependencies]
-aot-lang = "0.2"
+aot-lang = "1"
 ir-lang = "1"
 ```
 
@@ -469,17 +469,24 @@ assert!(!text.data().is_empty());
 
 ```toml
 # no_std build:
-aot-lang = { version = "0.2", default-features = false }
+aot-lang = { version = "1", default-features = false }
 
 # with serialization:
-aot-lang = { version = "0.2", features = ["serde"] }
+aot-lang = { version = "1", features = ["serde"] }
 ```
 
 <br>
 
 ## SemVer
 
-This is a pre-1.0 release. The surface above is the one the crate ships today and is intended to freeze at `1.0`; until then, minor `0.x` releases may refine it. Both [`AotError`](#aoterror) and the underlying error types are `#[non_exhaustive]`, so a new failure reason is an additive change, not a breaking one — a `match` on either must keep a wildcard arm. The MSRV is Rust `1.85`. This file is updated in lockstep with every release so it always matches the code.
+As of `1.0.0` the public surface above is frozen. The crate follows [Semantic Versioning](https://semver.org):
+
+- No documented item is removed or changed in a breaking way within `1.x`; breaking changes wait for `2.0`.
+- New functionality is additive and arrives in minor releases. Both [`AotError`](#aoterror) and the underlying error types are `#[non_exhaustive]`, so a new failure reason is a minor change, not a breaking one; a `match` on either must keep a wildcard arm.
+- The MSRV is Rust `1.85`; raising it is a minor change, never a patch.
+- Behaviour is part of the contract: a function that compiles today keeps compiling, the object-code bytes for a given program are stable and identical across hosts, and the link-map `Display` form is unchanged for a given image.
+
+This file is updated in lockstep with every release so it always matches the code.
 
 <br>
 <hr>

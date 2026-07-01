@@ -106,3 +106,73 @@ fn image_bytes_are_reproducible_across_hosts() {
         second.section(".text").unwrap().data()
     );
 }
+
+#[test]
+fn base_address_shifts_every_symbol_uniformly() {
+    // The base address is layout only: it offsets every symbol by the same amount
+    // and leaves the object-code bytes untouched.
+    let build = || {
+        let mut compiler = Compiler::new();
+        compiler.add(&constant("a", 1)).unwrap();
+        compiler.add(&constant("b", 2)).unwrap();
+        compiler.add(&constant("c", 3)).unwrap();
+        compiler
+    };
+
+    let base = 0x0040_0000;
+    let at_zero = build().link().unwrap();
+    let shifted = {
+        let mut compiler = build();
+        compiler.base_address(base);
+        compiler.link().unwrap()
+    };
+
+    for name in ["a", "b", "c"] {
+        let low = at_zero.symbol(name).unwrap();
+        let high = shifted.symbol(name).unwrap();
+        assert_eq!(
+            high,
+            low + base,
+            "{name} shifts by exactly the base address"
+        );
+    }
+    // The code itself is identical regardless of where it is placed.
+    assert_eq!(
+        at_zero.section(".text").unwrap().data(),
+        shifted.section(".text").unwrap().data()
+    );
+}
+
+#[test]
+fn links_many_functions_with_a_complete_sorted_symbol_table() {
+    let mut compiler = Compiler::new();
+    for i in 0..64 {
+        // Names are zero-padded so lexical order matches numeric order.
+        compiler.add(&constant(&format!("f{i:02}"), i)).unwrap();
+    }
+    let image = compiler.link().unwrap();
+
+    assert_eq!(image.symbols().count(), 64);
+    // `symbols()` is sorted by name; addresses are strictly increasing in that order
+    // because add order and name order coincide here.
+    let mut previous: Option<u64> = None;
+    for (_name, address) in image.symbols() {
+        if let Some(prev) = previous {
+            assert!(address > prev, "addresses strictly increase");
+        }
+        previous = Some(address);
+    }
+}
+
+#[test]
+fn function_names_with_punctuation_become_symbols() {
+    // A front-end may mangle names with dots or underscores; they pass through as
+    // ordinary symbol names.
+    let mut compiler = Compiler::new();
+    compiler.add(&constant("core::math::add", 0)).unwrap();
+    compiler.add(&constant("_start", 0)).unwrap();
+    let image = compiler.link().unwrap();
+
+    assert!(image.symbol("core::math::add").is_some());
+    assert!(image.symbol("_start").is_some());
+}

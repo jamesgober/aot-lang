@@ -21,6 +21,38 @@
 
 ---
 
+## [1.0.0] - 2026-07-01
+
+API freeze. The public surface is stable and frozen until `2.0`; it does not change
+from `0.2.0`. This release ratifies the SemVer promise, hardens the object-code
+encoding, and expands the test suite and examples.
+
+### Added
+
+- `docs/API.md` marked stable, with the `1.0` SemVer promise recorded.
+- Runnable examples: `compile_and_inspect`, `multi_function_image`, `error_handling`.
+- Property test that the encoded length is predicted exactly (the output buffer is
+  allocated once and never grows).
+- Integration tests for base-address invariance, many-function layout, and symbol
+  names carrying punctuation.
+
+### Changed
+
+- Object-code sizing is now computed exactly and with saturating arithmetic, so
+  `encode` allocates its buffer once and cannot overflow the capacity computation.
+- Hot encoding paths are marked `#[inline]`.
+- Stability language across the crate root, `README`, and `docs/API.md` now states
+  the frozen `1.0` surface and the SemVer promise.
+
+### Fixed
+
+### Security
+
+- No advisories. `cargo audit` and `cargo deny check` pass with the `1.x`
+  dependency tree.
+
+---
+
 ## [0.2.0] - 2026-06-30
 
 The core release. aot-lang now compiles `ir-lang` functions ahead of time into a
@@ -75,6 +107,7 @@ Initial scaffold and repository bootstrap. No domain logic yet &mdash; this rele
 - `.github/workflows/ci.yml` CI matrix; `deny.toml`, `clippy.toml`, `rustfmt.toml`.
 - `dev/DIRECTIVES.md` and `dev/ROADMAP.md` (committed engineering standards + plan).
 
-[Unreleased]: https://github.com/jamesgober/aot-lang/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/jamesgober/aot-lang/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/jamesgober/aot-lang/compare/v0.2.0...v1.0.0
 [0.2.0]: https://github.com/jamesgober/aot-lang/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/jamesgober/aot-lang/releases/tag/v0.1.0

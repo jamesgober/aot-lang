@@ -29,7 +29,7 @@
         <strong>MSRV is 1.85+</strong> (Rust 2024 edition). <code>#![no_std]</code>-capable (needs only <code>alloc</code>); <code>#![forbid(unsafe_code)]</code>.
     </p>
     <blockquote>
-        <strong>Status: pre-1.0 (<code>v0.2.0</code>), in active development.</strong> The public API is being designed across the 0.x series and frozen at <code>1.0.0</code>. See <a href="./CHANGELOG.md"><code>CHANGELOG.md</code></a> and <a href="./dev/ROADMAP.md"><code>ROADMAP</code></a>.
+        <strong>Status: stable (<code>v1.0.0</code>).</strong> The public API is frozen and follows Semantic Versioning&mdash;no breaking changes before <code>2.0</code>. See <a href="./docs/API.md#semver"><code>docs/API.md</code></a> for the SemVer promise, and <a href="./CHANGELOG.md"><code>CHANGELOG.md</code></a> for the release history.
     </blockquote>
 </div>
 
@@ -40,11 +40,11 @@
 
 ```toml
 [dependencies]
-aot-lang = "0.2"
+aot-lang = "1"
 ir-lang = "1"
 ```
 
-You build the input functions with `ir-lang`, so it belongs alongside `aot-lang`. For a `no_std` build, disable default features: `aot-lang = { version = "0.2", default-features = false }`.
+You build the input functions with `ir-lang`, so it belongs alongside `aot-lang`. For a `no_std` build, disable default features: `aot-lang = { version = "1", default-features = false }`.
 
 <br>
 <hr>
@@ -135,6 +135,16 @@ For a complete reference with examples for every item, see [`docs/API.md`](./doc
 - **Deterministic output** — the object-code encoding is fixed little-endian, so recompiling the same IR yields byte-identical images across hosts.
 - **`no_std`-ready** — needs only `alloc`, performs no I/O, and forbids `unsafe`. The whole pipeline drops the standard library together.
 - **Cross-platform** — Linux, macOS, and Windows on x86-64 and ARM64, verified in CI on all three operating systems and at the MSRV.
+
+<br>
+
+### Examples
+
+Runnable end-to-end demos live in [`examples/`](./examples):
+
+- [`compile_and_inspect`](./examples/compile_and_inspect.rs) — compile one function and print its link map. `cargo run --example compile_and_inspect`
+- [`multi_function_image`](./examples/multi_function_image.rs) — lay several functions out with a base address and entry point. `cargo run --example multi_function_image`
+- [`error_handling`](./examples/error_handling.rs) — surface the code-generation and link failure stages. `cargo run --example error_handling`
 
 <br>
 <hr>

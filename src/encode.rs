@@ -57,10 +57,15 @@ const KIND_INT: u8 = 0;
 const KIND_FLOAT: u8 = 1;
 const KIND_BOOL: u8 = 2;
 
+/// The fixed part of the header: register count, parameter count, and op count,
+/// four bytes each.
+const HEADER_FIXED: usize = 12;
+
 /// Maps a binary operator to its stable byte code.
 ///
 /// The match is exhaustive so a new IR operator is a compile error here rather than
 /// a silently unencodable op.
+#[inline]
 fn bin_code(op: BinOp) -> u8 {
     match op {
         BinOp::Add => 0,
@@ -79,6 +84,7 @@ fn bin_code(op: BinOp) -> u8 {
 }
 
 /// Maps a unary operator to its stable byte code.
+#[inline]
 fn un_code(op: UnOp) -> u8 {
     match op {
         UnOp::Neg => 0,
@@ -86,19 +92,67 @@ fn un_code(op: UnOp) -> u8 {
     }
 }
 
+/// The exact number of bytes one op-record occupies, matching what [`encode_op`]
+/// writes. Kept in lockstep with the encoder so [`encoded_len`] is exact.
+#[inline]
+fn op_size(op: &Op) -> usize {
+    match op {
+        // tag + dst + (kind + payload)
+        Op::Const { value, .. } => 5 + const_payload_size(value),
+        // tag + op + dst + lhs + rhs
+        Op::Bin { .. } => 14,
+        // tag + op + dst + src
+        Op::Un { .. } => 10,
+        // tag + dst + src
+        Op::Move { .. } => 9,
+        // tag + target
+        Op::Jump { .. } => 5,
+        // tag + cond + target
+        Op::JumpUnless { .. } => 9,
+        // tag + has_value + (optional value)
+        Op::Return { value } => 2 + if value.is_some() { 4 } else { 0 },
+    }
+}
+
+/// The bytes a constant occupies after its op tag and destination register: one
+/// kind byte plus the payload (eight for int/float, one for bool).
+#[inline]
+fn const_payload_size(value: &Const) -> usize {
+    1 + match value {
+        Const::Int(_) | Const::Float(_) => 8,
+        Const::Bool(_) => 1,
+    }
+}
+
+/// The exact number of bytes [`encode`] will write for `program`, so the output
+/// buffer is allocated once and never grows.
+///
+/// The sum uses saturating arithmetic: the byte count of a real program is far
+/// inside `usize`, and for a pathological one the reservation caps out rather than
+/// wrapping to a too-small capacity. A wrong hint would only cost a reallocation,
+/// never correctness, but computing it exactly means the common path allocates once.
+#[inline]
+fn encoded_len(program: &Program) -> usize {
+    let params_bytes = program.params().len().saturating_mul(4);
+    let mut total = HEADER_FIXED.saturating_add(params_bytes);
+    for op in program.ops() {
+        total = total.saturating_add(op_size(op));
+    }
+    total
+}
+
 /// Encodes a lowered program into the section bytes described by the [module
 /// docs](self).
 ///
 /// The program's name is deliberately left out — the caller records it as the
-/// object's entry symbol. The returned buffer is allocated once, sized from the
-/// program up front, and filled without reallocating.
+/// object's entry symbol. The buffer is sized exactly from the program up front, so
+/// it is allocated once and filled without reallocating.
+#[inline]
 pub(crate) fn encode(program: &Program) -> Vec<u8> {
     let params = program.params();
     let ops = program.ops();
 
-    // Header is 12 bytes plus four per parameter; a body op is between five and
-    // fourteen bytes, so eight per op is a close lower-bound reservation.
-    let mut out = Vec::with_capacity(12 + params.len() * 4 + ops.len() * 8);
+    let mut out = Vec::with_capacity(encoded_len(program));
 
     out.extend_from_slice(&program.register_count().to_le_bytes());
     // A parameter or op count that a validated function can reach always fits in a
@@ -117,6 +171,7 @@ pub(crate) fn encode(program: &Program) -> Vec<u8> {
 }
 
 /// Appends one op-record to `out`.
+#[inline]
 fn encode_op(op: Op, out: &mut Vec<u8>) {
     match op {
         Op::Const { dst, value } => {
@@ -165,6 +220,7 @@ fn encode_op(op: Op, out: &mut Vec<u8>) {
 }
 
 /// Appends a constant's kind byte and payload to `out`.
+#[inline]
 fn encode_const(value: Const, out: &mut Vec<u8>) {
     match value {
         Const::Int(v) => {
@@ -348,9 +404,18 @@ mod tests {
         })
     }
 
-    // Asserts that a compiled program survives an encode/decode round-trip intact.
+    // Asserts that a compiled program survives an encode/decode round-trip intact,
+    // and that the buffer was sized exactly (encoded length equals the prediction,
+    // and the buffer never grew past its reservation).
     fn assert_round_trips(program: &Program) {
-        let decoded = decode(&encode(program)).expect("encoding decodes cleanly");
+        let bytes = encode(program);
+        assert_eq!(
+            bytes.len(),
+            encoded_len(program),
+            "size prediction is exact"
+        );
+        assert_eq!(bytes.len(), bytes.capacity(), "no reallocation occurred");
+        let decoded = decode(&bytes).expect("encoding decodes cleanly");
         assert_eq!(decoded.register_count, program.register_count());
         assert_eq!(decoded.params, program.params());
         assert_eq!(decoded.ops, program.ops());
@@ -471,7 +536,11 @@ mod tests {
             )
         ) {
             let program = compile(&build_int_program(&steps)).unwrap();
-            let decoded = decode(&encode(&program)).expect("decodes");
+            let bytes = encode(&program);
+            // The size prediction is exact, so the buffer is allocated once.
+            prop_assert_eq!(bytes.len(), encoded_len(&program));
+            prop_assert_eq!(bytes.len(), bytes.capacity());
+            let decoded = decode(&bytes).expect("decodes");
             prop_assert_eq!(decoded.register_count, program.register_count());
             prop_assert_eq!(&decoded.params, program.params());
             prop_assert_eq!(&decoded.ops, program.ops());

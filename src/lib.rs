@@ -72,9 +72,11 @@
 //!
 //! ## Stability
 //!
-//! The public surface is being designed across the `0.x` series and frozen at
-//! `1.0`. See [`docs/API.md`](https://github.com/jamesgober/aot-lang/blob/main/docs/API.md)
-//! and [`dev/ROADMAP.md`](https://github.com/jamesgober/aot-lang/blob/main/dev/ROADMAP.md).
+//! The public surface is frozen and stable as of `1.0.0`: it follows Semantic
+//! Versioning, with no breaking changes before `2.0`. [`AotError`] is
+//! `#[non_exhaustive]`, so a new failure reason is an additive, non-breaking change.
+//! The full surface and the SemVer promise are catalogued in
+//! [`docs/API.md`](https://github.com/jamesgober/aot-lang/blob/main/docs/API.md#semver).
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
