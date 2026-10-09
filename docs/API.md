@@ -30,6 +30,7 @@ Ahead-of-time compile the [`ir-lang`](https://docs.rs/ir-lang) intermediate repr
   - [`AotError`](#aoterror)
   - [`Image`](#image)
   - [`OutputSection`](#outputsection)
+- [Object-code format](#object-code-format)
 - [Feature flags](#feature-flags)
 - [SemVer](#semver)
 
@@ -62,7 +63,7 @@ A compile takes one or more [`ir_lang::Function`](https://docs.rs/ir-lang)s and 
 - **Lower.** Each function is compiled to a [`codegen_lang::Program`](https://docs.rs/codegen-lang) — a stream of register bytecode — after being checked with `Function::validate`, so only well-formed SSA is ever lowered. A function that fails validation is rejected here as [`AotError::Codegen`](#aoterror).
 - **Encode and link.** Each program is encoded into the bytes of a `.text` section, with a symbol at its start named for the function, and [`linker-lang`](https://docs.rs/linker-lang) places the objects end to end from the base address, resolving the entry point. Two functions that share a name collide, and the link fails as [`AotError::Link`](#aoterror).
 
-The object-code byte encoding is little-endian on every target, so an image compiled on one host is byte-identical on another. The result is an [`Image`](#image) whose `.text` bytes are final and whose symbol table records where each function landed.
+The object-code byte encoding is little-endian on every target, so an image compiled on one host is byte-identical on another. The result is an [`Image`](#image) whose `.text` bytes are final and whose symbol table records where each function landed. Each function's bytes are one self-describing record in the [object-code format](#object-code-format). aot-lang produces images; it ships no loader or interpreter.
 
 <br>
 <hr>
@@ -460,6 +461,46 @@ assert!(!text.data().is_empty());
 <hr>
 <br>
 
+## Object-code format
+
+Each function in an image's `.text` section is one record, starting at the address its symbol resolves to. Records are laid out back to back in the order functions were added, and each is self-delimiting. This is **format version 1**, written since aot-lang `1.0.1`. All integers are little-endian.
+
+```text
+header:
+  magic          : 4 bytes  "AOTB"
+  version        : u32      1
+  register_count : u32      valid registers are 0..register_count
+  param_count    : u32
+  params         : param_count × u32   each parameter's register, in declaration order
+  label_count    : u32
+  labels         : label_count × u32   label i resolves to op index labels[i]
+  op_count       : u32
+body:
+  op_count × op-record
+```
+
+An op-record is a one-byte tag and its operands. Registers and labels are `u32`. A jump target is a **label id**, resolved through the record's own label table. Label `0` is the entry and resolves to op `0`.
+
+| Tag | Op | Operands |
+|---|---|---|
+| `0x00` | `const` | `dst:u32`, `kind:u8` (`0` int, `1` float, `2` bool), payload (`i64`, `f64` bit pattern, or a `0`/`1` byte) |
+| `0x01` | `bin` | `op:u8`, `dst:u32`, `lhs:u32`, `rhs:u32` |
+| `0x02` | `un` | `op:u8`, `dst:u32`, `src:u32` |
+| `0x03` | `move` | `dst:u32`, `src:u32` |
+| `0x04` | `jump` | `target:u32` (label id) |
+| `0x05` | `jump_unless` | `cond:u32`, `target:u32` (label id) |
+| `0x06` | `return` | `has_value:u8`, then `value:u32` if `has_value` is `1` |
+
+Binary operator codes: `add 0`, `sub 1`, `mul 2`, `div 3`, `eq 4`, `ne 5`, `lt 6`, `le 7`, `gt 8`, `ge 9`, `and 10`, `or 11`. Unary: `neg 0`, `not 1`.
+
+The record holds every field of the lowered [`codegen_lang::Program`](https://docs.rs/codegen-lang) except its name, which is the symbol. That is the register count, the parameters, the complete label table, and every op, with float constants bit-exact (NaN payloads and the sign of zero survive). The test suite decodes records back out of linked images and compares them field by field with the lowered program. It also runs the decoded bytecode and checks the results against the IR.
+
+A reader must refuse a record whose magic is not `AOTB` or whose version it does not know. aot-lang `1.0.0` wrote an unversioned layout with no magic, no version, and **no label table**. In that layout the targets of `jump` and `jump_unless` could not be resolved, so any function with a branch or loop was unrecoverable. Treat it as version 0; a version-1 reader rejects it at the magic.
+
+<br>
+<hr>
+<br>
+
 ## Feature flags
 
 | Feature | Default | Description |
@@ -484,7 +525,7 @@ As of `1.0.0` the public surface above is frozen. The crate follows [Semantic Ve
 - No documented item is removed or changed in a breaking way within `1.x`; breaking changes wait for `2.0`.
 - New functionality is additive and arrives in minor releases. Both [`AotError`](#aoterror) and the underlying error types are `#[non_exhaustive]`, so a new failure reason is a minor change, not a breaking one; a `match` on either must keep a wildcard arm.
 - The MSRV is Rust `1.85`; raising it is a minor change, never a patch.
-- Behaviour is part of the contract: a function that compiles today keeps compiling, the object-code bytes for a given program are stable and identical across hosts, and the link-map `Display` form is unchanged for a given image.
+- Behaviour is part of the contract: a function that compiles today keeps compiling, the object-code bytes for a given program are stable and identical across hosts **within a format version**, and the link-map `Display` form is unchanged for a given image. The [object-code format](#object-code-format) carries its version. A layout change bumps the version and is called out in the CHANGELOG. `1.0.1` made the one such change so far: version 1 added the header and the label table that `1.0.0`'s unversioned bytes lacked. That was a bug fix, because those bytes could not represent a branch.
 
 This file is updated in lockstep with every release so it always matches the code.
 

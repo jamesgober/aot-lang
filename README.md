@@ -18,7 +18,7 @@
 
 <div align="left">
     <p>
-        <strong>aot-lang</strong> is the ahead-of-time compiler of the <code>-lang</code> language-construction family. It takes functions in the <a href="https://docs.rs/ir-lang"><code>ir-lang</code></a> intermediate representation, lowers each to object code, and lays them out together into a single linked <strong>image</strong>&mdash;a self-contained artifact with its code, a symbol table, and an entry point, ready to be inspected, serialized, or loaded.
+        <strong>aot-lang</strong> is the ahead-of-time compiler of the <code>-lang</code> language-construction family. It takes functions in the <a href="https://docs.rs/ir-lang"><code>ir-lang</code></a> intermediate representation, lowers each to object code, and lays them out together into a single linked <strong>image</strong>&mdash;a self-contained artifact with its code, a symbol table, and an entry point, ready to be inspected or serialized. aot-lang does not load or run images; each function's code is a self-describing record in a versioned format (see <a href="./docs/API.md#object-code-format">Object-code format</a>) that a loader can be written against.
     </p>
     <p>
         It is the batch counterpart to a just-in-time compiler: where a JIT runs a function the moment it is generated, aot-lang compiles the whole program up front. It is the end of the pipeline a front-end follows&mdash;parse, type-check, lower to IR, then compile ahead of time. The surface is deliberately small, and the object-code encoding is little-endian on every target, so an image built on one host is byte-identical on another.
@@ -133,6 +133,7 @@ For a complete reference with examples for every item, see [`docs/API.md`](./doc
 - **Small surface** — one function, one builder, one error type. Nothing to configure that the task does not need.
 - **Two-stage pipeline** — code generation and linking are separate, wired crates, and a failure names which stage it came from.
 - **Deterministic output** — the object-code encoding is fixed little-endian, so recompiling the same IR yields byte-identical images across hosts.
+- **Versioned, complete object code** — each function's record starts with a magic and format version and carries its label table, so jump targets resolve from the bytes alone (since 1.0.1; 1.0.0 omitted the label table).
 - **`no_std`-ready** — needs only `alloc`, performs no I/O, and forbids `unsafe`. The whole pipeline drops the standard library together.
 - **Cross-platform** — Linux, macOS, and Windows on x86-64 and ARM64, verified in CI on all three operating systems and at the MSRV.
 

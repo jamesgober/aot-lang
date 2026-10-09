@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 05f00da6315d444d06ca06c051cd4119315afe43a3830b91ca3c87c55a14cd22 # shrinks to s = LoopSpec { init: [0, 0], next: [(0, true, -1), (0, false, 0)] }, trips = 1

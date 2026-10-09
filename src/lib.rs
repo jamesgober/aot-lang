@@ -6,9 +6,16 @@
 //! aot-lang is the batch counterpart to a just-in-time compiler: instead of running
 //! a function the moment it is generated, it lowers one or more functions to object
 //! code and lays them out together into an [`Image`] — a self-contained artifact
-//! with its code, a symbol table, and an entry point, ready to be inspected,
-//! serialized, or loaded. It is the end of the pipeline a front-end follows: parse,
+//! with its code, a symbol table, and an entry point, ready to be inspected or
+//! serialized. It is the end of the pipeline a front-end follows: parse,
 //! type-check, lower to IR, and then compile the whole program ahead of time.
+//!
+//! aot-lang produces images; it does not load or run them. Each function's code is
+//! one self-describing record in a versioned format (a magic and version header,
+//! the register and parameter layout, the label table that resolves jump targets,
+//! and the ops), so a loader or bytecode interpreter can be written against it; the
+//! format is specified in
+//! [`docs/API.md`](https://github.com/jamesgober/aot-lang/blob/main/docs/API.md#object-code-format).
 //!
 //! ## The pipeline
 //!
@@ -22,7 +29,9 @@
 //!    the objects at addresses, resolves the entry point, and produces the [`Image`].
 //!
 //! The object-code byte format is little-endian on every target, so an image
-//! compiled on one host is byte-identical on another.
+//! compiled on one host is byte-identical on another. Every record starts with the
+//! magic `AOTB` and a format version (`1` since aot-lang 1.0.1), so a reader can
+//! refuse bytes it does not understand.
 //!
 //! ## Surface
 //!
@@ -100,6 +109,12 @@ extern crate alloc;
 mod compiler;
 mod encode;
 mod error;
+
+// The object-code reader is test-only: it lives with the integration tests and is
+// compiled into the unit tests from there, so it is never part of the published API.
+#[cfg(test)]
+#[path = "../tests/support/decode.rs"]
+mod test_decode;
 
 pub use compiler::{Compiler, compile};
 pub use error::AotError;

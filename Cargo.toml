@@ -3,7 +3,7 @@
 # =============================================================================
 [package]
 name    = "aot-lang"
-version = "1.0.0"
+version = "1.0.1"
 
 # Minimum Supported Rust Version (MSRV)
 rust-version = "1.85"
@@ -60,8 +60,9 @@ serde = ["dep:serde", "ir-lang/serde", "codegen-lang/serde", "linker-lang/serde"
 # compilation; its frozen 1.0 surface is the input to every `Compiler::add`.
 ir-lang = { version = "1", default-features = false }
 # Lowers each `Function` to a `Program` of register bytecode — the object code this
-# crate encodes and lays out. The first half of the pipeline.
-codegen-lang = { version = "1", default-features = false }
+# crate encodes and lays out. The first half of the pipeline. 1.0.1 is the floor:
+# 1.0.0 miscompiled loop back edges that permute their own parameters (ISSUES H01).
+codegen-lang = { version = "1.0.1", default-features = false }
 # Places the encoded objects at addresses, resolves their entry symbols, and produces
 # the final `Image`. The second half of the pipeline; its `Image` is our output.
 linker-lang = { version = "1", default-features = false }
