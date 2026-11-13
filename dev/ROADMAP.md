@@ -24,7 +24,7 @@ Public surface stable and frozen until 2.0. No breaking change from v0.2.0.
       and error-path tests; runnable examples.
 
 ## v1.0.1 - Patch: complete, versioned object code (DONE, 2026-10-08)
-Fixes ISSUES **H02** from `_lexersketch/ISSUES.md`. No public API change; the object-code
+Fixes ISSUES **H02** from the issue ledger. No public API change; the object-code
 byte format changes (bug fix: 1.0.0 bytes could not represent a branch).
 
 Delivered:
@@ -54,6 +54,6 @@ miscompiled permuting back edges, which reached aot-lang images); `ir-lang = "1"
 `linker-lang = "1"` unchanged.
 
 Replacement: aot-lang's bytecode-container design is superseded by the native backend
-in **Phase 5** of the LexerSketch roadmap (step 5.7, aot-lang 2.0: our backend to
+in **Phase 5** of the toolchain's roadmap (step 5.7, aot-lang 2.0: our backend to
 object-lang to the linker to a real executable). This patch only makes the 1.x output
 correct and self-describing.
